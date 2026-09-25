@@ -36,9 +36,6 @@
 </table>
 
 ## We don't have gta VI yet, but at least we have this
-<a href="videos/3d.mp4">
-  <img src="imgs/3d.png" width="300">
-</a>
 
 <p align="center">
   <img src="imgs/betterthangtavi_.gif" width="400">
