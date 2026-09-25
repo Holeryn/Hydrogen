@@ -1,0 +1,42 @@
+#include <stdio.h>
+#include <math.h>
+
+#include "numerics.h"
+
+int main(void)
+{
+    float r = 0.001f;
+    float h = 0.001f;
+
+    int l = 0;
+    float E = 1.5f;
+
+    /*
+     * Soluzione esatta:
+     *
+     * u(r)  = r exp(-r^2/2)
+     * u'(r) = exp(-r^2/2) (1-r^2)
+     */
+
+    float y1 = r * expf(-r*r/2.0f);
+    float y2 = expf(-r*r/2.0f) * (1.0f-r*r);
+
+    while (r < 5.0f) {
+
+        KuttaV next = K4(y1, y2, r, h, l, E);
+
+        y1 = next.v0;
+        y2 = next.v1;
+
+        r += h;
+
+        float exact = r * expf(-r*r/2.0f);
+
+        printf("%f %f %f\n",
+               r,
+               y1,
+               exact);
+    }
+
+    return 0;
+}

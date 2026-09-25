@@ -1,0 +1,212 @@
+#include "numerics.h"
+
+/*
+Breve storia del senso di questo codice.
+Ero sicuro che per implementare un numerov avessi bisogno di uno shooting....
+Sfortunatamente ho passato una giornata a scrivere questo codice.
+Lo conservo perchè non si sa mai...
+ */
+
+
+// Lavorerò in costanti adimensionali
+
+static const float r0 = 0.001f; // lo metto per evitare di finire in divergenze
+
+/* Cercherò di tenere i commenti delle funzioni pubbliche nel header
+   e di quelle static dentro al file */
+
+float m = 1.0f;
+
+static float v(float r){
+  return 0.5f*r*r;
+}
+
+static float F(float r, int l, float E) {
+    return 2.0f * m *
+      (v(r) + ((float)l * (l + 1)) / (2.0f * m * r * r) - E);
+}
+
+static KuttaV f(float y1,
+                float y2,
+                float r,
+                int l,
+                float E)
+{
+    KuttaV out;
+
+    out.v0 = y2;
+    out.v1 = F(r, l, E) * y1;
+
+    return out;
+}
+
+
+KuttaV RK4(float y1,
+                 float y2,
+                 float r,
+                 float h,
+                 int l,
+                 float E)
+{
+    KuttaV k1, k2, k3, k4;
+    KuttaV out;
+
+    k1 = f(y1,
+           y2,
+           r,
+           l,
+           E);
+
+    k2 = f(y1 + 0.5f*h*k1.v0,
+           y2 + 0.5f*h*k1.v1,
+           r  + 0.5f*h,
+           l,
+           E);
+
+    k3 = f(y1 + 0.5f*h*k2.v0,
+           y2 + 0.5f*h*k2.v1,
+           r  + 0.5f*h,
+           l,
+           E);
+
+    k4 = f(y1 + h*k3.v0,
+           y2 + h*k3.v1,
+           r  + h,
+           l,
+           E);
+
+    out.v0 =
+        y1 + h/6.0f *
+        (k1.v0 + 2.0f*k2.v0 + 2.0f*k3.v0 + k4.v0);
+
+    out.v1 =
+        y2 + h/6.0f *
+        (k1.v1 + 2.0f*k2.v1 + 2.0f*k3.v1 + k4.v1);
+
+    return out;
+}
+
+
+
+// SHOOTING
+
+static float fS(float x,
+		float u1,
+		float u2,
+		int n,
+		int l,
+		float E){
+
+  KuttaV Y;
+  Y.v0 = u1;
+  Y.v1 = x;
+  float h = (1.0f-r0)/n;
+  for(int i = 0; i < n; i++){
+    float xi = r0 + h*i;
+    Y = RK4(Y.v0,Y.v1,xi,h,l,E);
+  }
+
+  return Y.v0 - u2;
+}
+
+/*
+  Metodo della secante applicato a f.
+  Parte dai punti iniziali x e x + dx e restituisce
+  un'approssimazione di uno zero di f quando la distanza
+  tra due approssimazioni successive è minore di del.
+  Esegue al massimo ni iterazioni.
+*/ 
+static float secant(int n,
+		    int ni,
+		    float del,
+		    float x,
+		    float dx,
+		    float u1,
+		    float u2,
+		    int l,
+		    float E){
+  int k = 0;
+  float x1 = x + dx;
+  while((fabsf(dx) > del) && (k < ni)){
+    float d = fS(x1,u1,u2,n,l,E) - fS(x,u1,u2,n,l,E);
+    float x2 = x1 - fS(x1,u1,u2,n,l,E)*(x1-x)/d;
+    x = x1;
+    x1 = x2;
+    dx = x1-x;
+    k++;
+  }
+
+  if(k == ni){
+    printf("zero non trovatoooo!!");
+  }
+
+  return x1;
+}
+
+
+/* prob per stati legati u1 = u2 = 0, ma per il momento
+   voglio restare generale */
+KuttaV *shooting(float u1,
+		 float u2,
+		  int n,
+		 float del,
+		 int ni,
+		 int l,
+		 float E){
+  float alpha = 1.0f;
+  float dalpha = 0.01f;
+  float h = (1.0f-r0)/n;
+  
+  float y1[n+1];
+  float y2[n+1];
+  KuttaV Y;
+
+  y1[0] = Y.v0 = u1;
+  y2[0] = Y.v1 = secant(n,ni,del,alpha,dalpha,u1,u2,l,E);
+  for(int i = 0; i < n ; i++){
+    float x = r0 + h*i;
+    Y = RK4(Y.v0,Y.v1,x,h,l,E);
+    y1[i+1] = Y.v0;
+    y2[i+1] = Y.v1;
+  }
+
+  KuttaV *YOUT;
+  YOUT = malloc(sizeof(KuttaV)*(n+1));
+  for (int i = 0; i <= n; i++) {
+    YOUT[i].v0 = y1[i];
+    YOUT[i].v1 = y2[i];
+  }
+
+  return YOUT;
+
+}
+
+
+float simpson(const float *y,
+	      int len,
+	      float h)
+{
+    int n = len - 1;   // numero di intervalli
+
+    float s0 = 0.0f;
+    float s1 = 0.0f;
+    float s2 = 0.0f;
+
+    for (int i = 1; i < n; i += 2) {
+        s0 += y[i];
+        s1 += y[i - 1];
+        s2 += y[i + 1];
+    }
+
+    float s = (s1 + 4.0f * s0 + s2) / 3.0f;
+
+    if ((n + 1) % 2 == 0) {
+        return h * (s +
+                    (5.0f * y[n] +
+                     8.0f * y[n - 1] -
+                     y[n - 2]) / 12.0f);
+    }
+    else {
+        return h * s;
+    }
+}

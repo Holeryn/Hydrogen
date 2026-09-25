@@ -1,0 +1,45 @@
+#ifndef NUMERICS
+#define NUMERICS
+
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct {
+  float v0;
+  float v1;
+} KuttaV;
+
+/*
+  Risolve schrodinger stazionaria in approx di campo centrale con
+   metodo di Runge Kutta al 4 ordine.
+   y1: condizone iniziale su f
+   y2: condizione iniziale su f'
+   r: valore iniziale di r
+   h: passo in r
+   l: numero quantico orbitale
+   E: Energia
+*/ 
+
+KuttaV RK4(float y1,
+	  float y2,
+	  float r,
+	  float h,
+	  int l,
+	  float E);
+
+
+
+KuttaV *shooting(float u1,
+		 float u2,
+		  int n,
+		 float del,
+		 int ni,
+		 int l,
+		 float E);
+
+float simpson(const float *y,
+	      int len,
+	      float h);
+
+#endif

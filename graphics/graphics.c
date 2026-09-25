@@ -1,0 +1,239 @@
+/* Gran parte di questa libreria è stata progettata copiando us esempio che
+   ho miracolosamente trovato in giro. */
+
+#include "graphics.h"
+
+#include <GL/freeglut.h>
+#include <GL/freeglut_ext.h>
+#include <GL/freeglut_std.h>
+#include <GL/gl.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdbool.h>
+
+// Camera
+typedef struct {
+  float x;
+  float y;
+  float z;
+  float yaw,pitch; // rispettivamente angolo destra/sinistra e su/giù
+} Camera;
+
+static Camera camera = { 0.0f, 0.0f, 20.0f, -90.0f, 0.0f };
+
+// Stato dei tasti WASD
+static bool tastoW = false, tastoA = false, tastoS = false, tastoD = false;
+
+// FInestra
+int width = 1024;
+int height = 768;
+
+// ultimo Frame
+static int tempoUltimoframe = 0;
+
+// Sphere
+Sphere spheres[NUM_SPHERES];
+int contatore = 0;
+
+
+static void disegnaScena(void){
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+
+  /* Calcola il punto verso cui guarda la camera in base a yaw/pitch */
+  float yawRad   = camera.yaw   * (float)M_PI / 180.0f;
+  float pitchRad = camera.pitch * (float)M_PI / 180.0f;
+
+  float dirX = cosf(yawRad) * cosf(pitchRad);
+  float dirY = sinf(pitchRad);
+  float dirZ = sinf(yawRad) * cosf(pitchRad);
+
+  gluLookAt(camera.x, camera.y, camera.z,
+	    camera.x + dirX, camera.y + dirY, camera.z + dirZ,
+	    0.0f, 1.0f, 0.0f);
+
+  // Disegna il pavimento
+  glDisable(GL_LIGHTING);
+  glColor3f(0.15f, 0.15f, 0.2f);
+  float dimensione = 60.0f;
+  float y = -RAGGIO_SFERA - RAGGIO_PALLINA - 2.0f;
+
+  glBegin(GL_LINES);
+  for (float i = -dimensione; i <= dimensione; i += 2.0f) {
+    glVertex3f(i, y, -dimensione);
+    glVertex3f(i, y, dimensione);
+    glVertex3f(-dimensione, y, i);
+    glVertex3f(dimensione, y, i);
+  }
+  glEnd();
+  glEnable(GL_LIGHTING);
+
+  for(int i = 0; i < contatore; i++){
+    glPushMatrix();
+    glTranslatef(spheres[i].x,
+		 spheres[i].y,
+		 spheres[i].z);
+    glColor3f(spheres[i].r,spheres[i].g,spheres[i].b);
+    glutSolidSphere(RAGGIO_PALLINA,24,24);
+    glPopMatrix();
+  }
+  
+  glutSwapBuffers();
+}
+
+static void ridimensiona_finestra(int width,
+			     int height){
+  glViewport(0, 0, width,height);
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  gluPerspective(70.0, (double)width / (double)height, 0.1, 300.0);
+  glMatrixMode(GL_MODELVIEW);
+}
+
+static void tasto_premuto(unsigned char tasto, int x, int y) {
+    (void)x; (void)y;
+    switch (tasto) {
+        case 'w': case 'W': tastoW = true; break;
+        case 'a': case 'A': tastoA = true; break;
+        case 's': case 'S': tastoS = true; break;
+        case 'd': case 'D': tastoD = true; break;
+        case 27: /* ESC */
+            glutLeaveMainLoop();
+            break;
+    }
+}
+
+static void tasto_rilasciato(unsigned char tasto, int x, int y) {
+    (void)x; (void)y;
+    switch (tasto) {
+        case 'w': case 'W': tastoW = false; break;
+        case 'a': case 'A': tastoA = false; break;
+        case 's': case 'S': tastoS = false; break;
+        case 'd': case 'D': tastoD = false; break;
+    }
+}
+
+/* ------------------------------ Input: Mouse (look) ------------------------------ */
+
+static bool ignoraProssimoMovimento = false;
+
+static void movimentoMouse(int x, int y) {
+    int centroX = width / 2;
+    int centroY = height / 2;
+
+    if (ignoraProssimoMovimento) {
+        /* Evita il "salto" causato dal glutWarpPointer stesso */
+        ignoraProssimoMovimento = false;
+        return;
+    }
+
+    int deltaX = x - centroX;
+    int deltaY = y - centroY;
+
+    if (deltaX != 0 || deltaY != 0) {
+        camera.yaw   += deltaX * SENSIBILITA_MOUSE;
+        camera.pitch -= deltaY * SENSIBILITA_MOUSE;
+
+        /* Limita il pitch per evitare capovolgimenti della camera */
+        if (camera.pitch > 89.0f)  camera.pitch = 89.0f;
+        if (camera.pitch < -89.0f) camera.pitch = -89.0f;
+
+        ignoraProssimoMovimento = true;
+        glutWarpPointer(centroX, centroY);
+    }
+}
+
+static void aggiorna(int valore) {
+    (void)valore;
+
+    int tempoAttuale = glutGet(GLUT_ELAPSED_TIME);
+    float deltaTempo = (tempoAttuale - tempoUltimoframe) / 1000.0f;
+    tempoUltimoframe= tempoAttuale;
+
+    float yawRad = camera.yaw * (float)M_PI / 180.0f;
+
+    /* Vettore "avanti" (solo sul piano XZ, per non volare guardando in su/giù) */
+    float avantiX = cosf(yawRad);
+    float avantiZ = sinf(yawRad);
+
+    /* Vettore "destra", perpendicolare al vettore avanti */
+    float destraX = -avantiZ;
+    float destraZ = avantiX;
+
+    float spostamento = VELOCITA_MOVIMENTO * deltaTempo;
+
+    if (tastoW) { camera.x += avantiX * spostamento; camera.z += avantiZ * spostamento; }
+    if (tastoS) { camera.x -= avantiX * spostamento; camera.z -= avantiZ * spostamento; }
+    if (tastoD) { camera.x += destraX * spostamento; camera.z += destraZ * spostamento; }
+    if (tastoA) { camera.x -= destraX * spostamento; camera.z -= destraZ * spostamento; }
+
+    glutPostRedisplay();
+    glutTimerFunc(16, aggiorna, 0); /* ~60 FPS */
+}
+
+void add_sphere(float x,
+		float y,
+		float z,
+		float r,
+		float g,
+		float b){
+
+  if(contatore >= NUM_SPHERES){
+    printf("aiutoooo");
+    return;
+  }
+  
+  spheres[contatore].x = x;
+  spheres[contatore].y = y;
+  spheres[contatore].z = z;
+  spheres[contatore].r = r;
+  spheres[contatore].g = g;
+  spheres[contatore].b = b;
+  contatore++;
+}
+
+void start_opengl(int argc,
+		  char **argv){
+  glutInit(&argc, argv);
+  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+  glutInitWindowSize(width, height);
+  glutCreateWindow("Atomo di idrogeno");
+
+  glEnable(GL_DEPTH_TEST);
+  glEnable(GL_LIGHTING);
+  glEnable(GL_LIGHT0);
+  glEnable(GL_COLOR_MATERIAL);
+  glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+
+  GLfloat posizioneLuce[] = { 0.0f, 20.0f, 20.0f, 1.0f };
+  GLfloat luceAmbiente[]  = { 0.25f, 0.25f, 0.25f, 1.0f };
+  GLfloat luceDiffusa[]   = { 0.9f, 0.9f, 0.9f, 1.0f };
+  glLightfv(GL_LIGHT0, GL_POSITION, posizioneLuce);
+  glLightfv(GL_LIGHT0, GL_AMBIENT, luceAmbiente);
+  glLightfv(GL_LIGHT0, GL_DIFFUSE, luceDiffusa);
+
+  glClearColor(0.05f, 0.05f, 0.1f, 1.0f);
+  glEnable(GL_NORMALIZE);
+
+  ridimensiona_finestra(width,height);
+
+  glutDisplayFunc(disegnaScena);
+  glutReshapeFunc(ridimensiona_finestra);
+  glutKeyboardFunc(tasto_premuto);
+  glutKeyboardUpFunc(tasto_rilasciato);
+  glutPassiveMotionFunc(movimentoMouse);
+
+  /* Nasconde il cursore e lo blocca al centro della finestra */
+  glutSetCursor(GLUT_CURSOR_NONE);
+  glutWarpPointer(width / 2, height / 2);
+
+  tempoUltimoframe = glutGet(GLUT_ELAPSED_TIME);
+  glutTimerFunc(16, aggiorna, 0);
+
+  printf("Controlli: W A S D per muoverti, mouse per guardarti intorno, ESC per uscire.\n");
+  
+  glutMainLoop();
+  return;
+}
