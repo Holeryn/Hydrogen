@@ -1,12 +1,12 @@
 # Hydrogen orbitals
 
-## Riferimento
+## Someone said:
 
 <p align="center">
   <img src="imgs/orbitali_atomici_idrogeno.png" width="700">
 </p>
 
-## Orbitali calcolati
+## I mean, it's trivial
 
 <table>
   <tr>
