@@ -47,7 +47,7 @@ if you see closely. The main file is called "HF.c" this is beacuse the aim of th
 # Ramanujan??
 I found this formula for the spherical harmonics in Cartesian coordinates really useful:
 
-$$
+```math
 Y_\ell^m(x,y,z)
 =
 (-1)^m
@@ -62,4 +62,4 @@ Y_\ell^m(x,y,z)
 {k!(\ell-k)!(\ell-m-2k)!}
 \frac{z^{\ell-m-2k}}
 {\left(x^2+y^2+z^2\right)^{(\ell-2k)/2}}
-$$
+```
