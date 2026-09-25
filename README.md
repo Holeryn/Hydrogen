@@ -63,3 +63,6 @@ Y_\ell^m(x,y,z)
 \frac{z^{\ell-m-2k}}
 {\left(x^2+y^2+z^2\right)^{(\ell-2k)/2}}
 ```
+
+# How to use??
+off course , you should install openGl and then compile with "make". Then you can lunch the program with ./HF n l m specifing the quantum numbers of choice.
