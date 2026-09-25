@@ -1,7 +1,0 @@
-#ifndef SCHRODINGER
-#define SCHRODINGER
-
-#include <math.h>
-#include <stdlib.h>
-
-#endif SCHRODINGER

@@ -1,12 +1,12 @@
 # Hydrogen orbitals
 
-## Someone said:
+## Riferimento
 
 <p align="center">
   <img src="imgs/orbitali_atomici_idrogeno.png" width="700">
 </p>
 
-## I mean, it's trivial
+## Orbitali calcolati
 
 <table>
   <tr>
@@ -34,3 +34,12 @@
     </td>
   </tr>
 </table>
+
+## We don't have gta VI yet, but at least we have this
+<a href="videos/3d.mp4">
+  <img src="imgs/3d.png" width="300">
+</a>
+
+<p align="center">
+  <img src="imgs/betterthangtavi_.gif" width="400">
+</p>
